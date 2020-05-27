@@ -60,7 +60,7 @@ commander
 commander
   .command("remove <dependency>")
   .description("Remove one livelink")
-  .action(([dependency]) => {
+  .action((dependency) => {
     const links = getLiveLinks();
     delete links[dependency];
     setLiveLinks(links);
