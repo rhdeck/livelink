@@ -66,4 +66,10 @@ commander
     setLiveLinks(links);
     console.log("Removed", dependency);
   });
+commander
+  .command("watch")
+  .description(
+    "Watch current dir and run onwatch yarn script when I see local files or livelinks change"
+  )
+  .action(watch);
 commander.parse();
