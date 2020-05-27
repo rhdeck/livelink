@@ -1,0 +1,33 @@
+{
+  "name": "@raydeck/livelink",
+  "version": "1.0.1",
+  "description": "Manage linking dependencies via config file",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "onwatch": "yarn build",
+    "build": "yarn pack -f package.tgz",
+    "watch": "node watch.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rhdeck/livelink.git"
+  },
+  "keywords": [
+    "wml"
+  ],
+  "author": "Ray Deck",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rhdeck/livelink/issues"
+  },
+  "homepage": "https://github.com/rhdeck/livelink#readme",
+  "dependencies": {
+    "@raydeck/wml": "^0.0.2",
+    "commander": "^5.1.0"
+  },
+  "devDependencies": {
+    "node-watch": "^0.6.4"
+  },
+  "bin": "./bin.js"
+}
