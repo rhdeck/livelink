@@ -1,6 +1,6 @@
 {
   "name": "@raydeck/livelink",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Manage linking dependencies via config file",
   "main": "index.js",
   "scripts": {
