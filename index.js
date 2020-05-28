@@ -1,8 +1,9 @@
-const { join } = require("path");
+const { join, resolve } = require("path");
 const { readFileSync, writeFileSync, existsSync } = require("fs");
 const { spawnSync, spawn } = require("child_process");
 const Deferred = require("es6-deferred");
 const nodeWatch = require("node-watch");
+const untildify = require("untildify");
 const watch = (filterFunc, allowDefault = true) => {
   //Look for noti and bbplugin directory
   const {
@@ -16,7 +17,7 @@ const watch = (filterFunc, allowDefault = true) => {
   let ref = { shouldBuild: false };
   let startTime = null;
   let lastBuild = 0;
-  let bbFullpath = join(bbPath, name.split("/").pop() + ".1s.sh");
+  let bbFullpath = join(untildify(bbPath), name.split("/").pop() + ".1s.sh");
   let firstInititial = name[0];
   let lastDuration = "";
   let durations = [];
@@ -35,6 +36,7 @@ const watch = (filterFunc, allowDefault = true) => {
         bbPath,
         "Is it installed? Continuing"
       );
+      console.log(e);
     }
   };
   const doIt = async () => {
@@ -76,7 +78,7 @@ const watch = (filterFunc, allowDefault = true) => {
   };
   doIt();
   nodeWatch(
-    targetPath,
+    watchPath,
     {
       filter: (f) => {
         (allowDefault &&
@@ -90,7 +92,7 @@ const watch = (filterFunc, allowDefault = true) => {
     },
     doIt
   );
-  spawnSync("noti", "-m", `${name} built`, { stdio: "inherit" });
+  spawnSync("noti", ["-m", `${name} built`], { stdio: "inherit" });
 };
 const getLiveLinks = () => {
   try {
