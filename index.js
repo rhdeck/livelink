@@ -74,7 +74,7 @@ const watch = (filterFunc, allowDefault = true) => {
     } else if (onwatch) {
       //Send noti that this is done
       try {
-        spawnSync("noti", ["-m", `${name}: Done (${lastDuration})`]);
+        spawnSync("noti", ["-m", `${name}: Done (${lastDuration}s)`]);
       } catch (e) {
         console.warn(
           "Attempted to run noti, but it is missing from this environment. Continuing."
@@ -90,30 +90,45 @@ const watch = (filterFunc, allowDefault = true) => {
   nodeWatch(
     watchPath,
     {
+      recursive: true,
       filter: (f) => {
-        console.log("Looking at changed file", f);
-        if (!existsSync(join(process.cwd(), f))) return false;
-        const lstat = lstatSync(join(process.cwd(), f));
-        if (lstat.isDirectory()) return false;
-        if (allowDefault) {
-          if (!/node_modules/.test(f)) {
-            //Ignore my own dist, lib,build files
-            if (!f.includes("dist/")) return false;
-            if (!f.includes("lib/")) return false;
-            if (!f.includes("build/")) return false;
-            if (!f.includes(".webpack/")) return false;
-            if (!f.includes(".serverless/")) return false;
-            return true;
+        const doRun = (() => {
+          if (!existsSync(join(process.cwd(), f))) {
+            console.log("Skipping becxause does not exist, ", f);
+            return false;
           }
-          if (
-            Object.entries(liveLinks).some(([dependency, _]) =>
-              f.includes("node_modules/" + dependency)
+          const lstat = lstatSync(join(process.cwd(), f));
+          if (lstat.isDirectory()) {
+            console.log("Skipping because is a directory", f);
+            return false;
+          }
+          if (allowDefault) {
+            if (!/node_modules/.test(f)) {
+              console.log("it is not in node modules so ok so far");
+              //Ignore my own dist, lib,build files
+              const skipdirs = [
+                "dist",
+                "lib",
+                "build",
+                ".webpack",
+                ".serverless",
+              ];
+              if (skipdirs.some((dir) => f.includes(dir + "/"))) return false;
+              console.log("Passed my no-no dir tests");
+              return true;
+            }
+            if (
+              Object.entries(liveLinks).some(([dependency, _]) =>
+                f.includes("node_modules/" + dependency)
+              )
             )
-          )
-            return true;
-        }
-        if (filterFunc) return filterFunc(f);
-        return false;
+              return true;
+          }
+          if (typeof filterFunc === "function") return filterFunc(f);
+          return false;
+        })();
+        console.log("Looking at changed file", f, doRun);
+        return doRun;
       },
       delay: 1000,
     },
