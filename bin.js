@@ -7,7 +7,7 @@ const commander = require("commander");
 commander
   .command("add <dependency> <source>")
   .description("Link <source> to update node_modules path for <dependency>")
-  .action(([dependency, source]) => {
+  .action((dependency, source) => {
     const liveLinks = getLiveLinks();
     setLiveLinks({ ...liveLinks, [source]: dependency });
     console.log("Added link from ", source, "to", dependency);

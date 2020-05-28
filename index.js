@@ -4,13 +4,17 @@ const { spawnSync, spawn } = require("child_process");
 const Deferred = require("es6-deferred");
 const nodeWatch = require("node-watch");
 const untildify = require("untildify");
+const minimatch = require("minimatch");
 const watch = (filterFunc, allowDefault = true) => {
   //Look for noti and bbplugin directory
   const {
-    liveLinks,
+    liveLink: {
+      liveLinks,
+      bbPath = "~/Documents/bbplugins",
+      watchPath = "./",
+      ignoremasks = [],
+    } = {},
     name,
-    bbPath = "~/Documents/bbplugins",
-    watchPath = "./",
     scripts: { onwatch, build } = {},
   } = require(join(process.cwd(), "package.json"));
   let isBuilding = false;
@@ -102,9 +106,20 @@ const watch = (filterFunc, allowDefault = true) => {
             console.log("Skipping because is a directory", f);
             return false;
           }
+          console.log("Checking against ignoremasks", ignoremasks);
+          if (
+            ignoremasks.some((mask) => {
+              console.log("matching against mask", mask);
+              const match = minimatch(f, mask);
+              console.log("Match result", match);
+              return match;
+            })
+          ) {
+            console.log("failed an ignoremask test: ", ignoremasks);
+            return false;
+          }
           if (allowDefault) {
             if (!/node_modules/.test(f)) {
-              console.log("it is not in node modules so ok so far");
               //Ignore my own dist, lib,build files
               const skipdirs = [
                 "dist",
@@ -114,7 +129,6 @@ const watch = (filterFunc, allowDefault = true) => {
                 ".serverless",
               ];
               if (skipdirs.some((dir) => f.includes(dir + "/"))) return false;
-              console.log("Passed my no-no dir tests");
               return true;
             }
             if (
@@ -137,7 +151,7 @@ const watch = (filterFunc, allowDefault = true) => {
 };
 const getLiveLinks = () => {
   try {
-    const { liveLinks } = JSON.parse(
+    const { liveLink: { liveLinks } = {} } = JSON.parse(
       readFileSync(join(process.cwd(), "package.json"), { encoding: "utf8" })
     );
     return liveLinks || {};
@@ -151,7 +165,11 @@ const setLiveLinks = (liveLinks) => {
   );
   writeFileSync(
     join(process.cwd(), "package.json"),
-    JSON.stringify({ ...o, liveLinks }, null, 2)
+    JSON.stringify(
+      { ...o, liveLink: { ...(o.liveLink || {}), liveLinks } },
+      null,
+      2
+    )
   );
 };
 const runLink = (liveLinks) => {
