@@ -26,7 +26,8 @@
     "@raydeck/wml": "^0.0.2",
     "commander": "^5.1.0",
     "es6-deferred": "^1.3.0",
-    "node-watch": "^0.6.4"
+    "node-watch": "^0.6.4",
+    "untildify": "^4.0.0"
   },
   "bin": "./bin.js"
 }
