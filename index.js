@@ -1,5 +1,5 @@
 const { join, resolve } = require("path");
-const { readFileSync, writeFileSync, existsSync } = require("fs");
+const { readFileSync, writeFileSync, existsSync, lstatSync } = require("fs");
 const { spawnSync, spawn } = require("child_process");
 const Deferred = require("es6-deferred");
 const nodeWatch = require("node-watch");
@@ -43,8 +43,12 @@ const watch = (filterFunc, allowDefault = true) => {
   const doIt = async () => {
     if (isBuilding) {
       ref.shouldBuild = true;
+      console.log(
+        "Aborting and scheduling rebuild because I am already building..."
+      );
       return;
     }
+    isBuilding = true;
     startTime = Date.now();
     const { promise, resolve } = new Deferred();
     console.log("Launching process", [onwatch ? "onwatch" : "build"]);
@@ -78,6 +82,7 @@ const watch = (filterFunc, allowDefault = true) => {
       }
       //Update bitbar with finished status
       lastBuild = Date.now();
+      console.log("Finished build", Date(lastBuild).toLocaleString());
       updatebb(`${firstInititial}: Done (${lastDuration}s)`);
     }
   };
@@ -86,18 +91,34 @@ const watch = (filterFunc, allowDefault = true) => {
     watchPath,
     {
       filter: (f) => {
-        (allowDefault &&
-          (!/node_modules/.test(f) ||
+        console.log("Looking at changed file", f);
+        if (!existsSync(join(process.cwd(), f))) return false;
+        const lstat = lstatSync(join(process.cwd(), f));
+        if (lstat.isDirectory()) return false;
+        if (allowDefault) {
+          if (!/node_modules/.test(f)) {
+            //Ignore my own dist, lib,build files
+            if (!f.includes("dist/")) return false;
+            if (!f.includes("lib/")) return false;
+            if (!f.includes("build/")) return false;
+            if (!f.includes(".webpack/")) return false;
+            if (!f.includes(".serverless/")) return false;
+            return true;
+          }
+          if (
             Object.entries(liveLinks).some(([dependency, _]) =>
-              f.contains("node_modules/" + dependency)
-            ))) ||
-          (filterFunc && filterFunc(f));
+              f.includes("node_modules/" + dependency)
+            )
+          )
+            return true;
+        }
+        if (filterFunc) return filterFunc(f);
+        return false;
       },
       delay: 1000,
     },
     doIt
   );
-  spawnSync("noti", ["-m", `${name} built`], { stdio: "inherit" });
 };
 const getLiveLinks = () => {
   try {
