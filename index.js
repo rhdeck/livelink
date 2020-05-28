@@ -1,7 +1,7 @@
 const { join } = require("path");
 const { readFileSync, writeFileSync, existsSync } = require("fs");
 const { spawnSync, spawn } = require("child_process");
-const Deferred = requrie("es6-deferred");
+const Deferred = require("es6-deferred");
 const nodeWatch = require("node-watch");
 const watch = (filterFunc, allowDefault = true) => {
   //Look for noti and bbplugin directory

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 const { join, dirname } = require("path");
 const { lstatSync } = require("fs");
-const { runLink, getLiveLinks, setLiveLinks } = require("./");
+const { runLink, getLiveLinks, setLiveLinks, watch } = require("./");
 const commander = require("commander");
 commander
   .command("add <dependency> <source>")
