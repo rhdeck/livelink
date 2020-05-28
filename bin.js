@@ -2,6 +2,7 @@
 const { join, dirname } = require("path");
 const { lstatSync } = require("fs");
 const { runLink, getLiveLinks, setLiveLinks, watch } = require("./");
+const { spawnSync } = require("child_process");
 const commander = require("commander");
 commander
   .command("add <dependency> <source>")
@@ -72,4 +73,13 @@ commander
     "Watch current dir and run onwatch yarn script when I see local files or livelinks change"
   )
   .action(watch);
+commander
+  .command("code")
+  .description("Launch visual studio code for all linked dependencies")
+  .action(() => {
+    const liveLinks = getLiveLinks();
+    Object.values(liveLinks).forEach((path) =>
+      spawnSync("code", [path], { stdio: "inherit" })
+    );
+  });
 commander.parse();

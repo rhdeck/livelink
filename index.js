@@ -22,13 +22,14 @@ const watch = (filterFunc, allowDefault = true) => {
   let lastDuration = "";
   let durations = [];
   const updatebb = (line) => {
+    if (!onwatch) return;
     try {
       writeFileSync(
         bbFullpath,
         `#!/bin/sh
   echo "${line}"
-  echo "${new Date(lastBuild).toLocaleString}"
-  echo "${name} | code ${process.cwd()}"`
+  echo "${lastBuild ? new Date(lastBuild).toLocaleString() : "No builds yet"}"
+  echo '${name} | bash="code ${process.cwd()}"'`
       );
     } catch (e) {
       console.log(
@@ -46,14 +47,17 @@ const watch = (filterFunc, allowDefault = true) => {
     }
     startTime = Date.now();
     const { promise, resolve } = new Deferred();
-    const process = spawn("yarn", [onwatch ? "onwatch" : "build"]);
+    console.log("Launching process", [onwatch ? "onwatch" : "build"]);
+    const process = spawn("yarn", [onwatch ? "onwatch" : "build"], {
+      stdio: "inherit",
+    });
     process.on("close", resolve);
     let i = setInterval(() => {
       updatebb(
         `${firstInititial}: Building ${(
           (Date.now() - startTime) /
           1000
-        ).toFixed(0)}/${lastDuration}`
+        ).toFixed(0)}/${lastDuration}s${ref.shouldBuild ? " +1" : " "}`
       );
     }, 500);
     await promise;
@@ -63,7 +67,7 @@ const watch = (filterFunc, allowDefault = true) => {
     durations.push(lastDuration);
     if (ref.shouldBuild) {
       doIt();
-    } else {
+    } else if (onwatch) {
       //Send noti that this is done
       try {
         spawnSync("noti", ["-m", `${name}: Done (${lastDuration})`]);
@@ -73,7 +77,8 @@ const watch = (filterFunc, allowDefault = true) => {
         );
       }
       //Update bitbar with finished status
-      updatebb(`${firstInititial}: Done (${lastDuration})`);
+      lastBuild = Date.now();
+      updatebb(`${firstInititial}: Done (${lastDuration}s)`);
     }
   };
   doIt();
