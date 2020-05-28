@@ -9,7 +9,7 @@ commander
   .description("Link <source> to update node_modules path for <dependency>")
   .action((dependency, source) => {
     const liveLinks = getLiveLinks();
-    setLiveLinks({ ...liveLinks, [source]: dependency });
+    setLiveLinks({ ...liveLinks, [dependency]: source });
     console.log("Added link from ", source, "to", dependency);
   });
 commander
