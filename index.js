@@ -74,6 +74,8 @@ const watch = (filterFunc, allowDefault = true) => {
     lastDuration = ((Date.now() - startTime) / 1000).toFixed(0);
     durations.push(lastDuration);
     if (ref.shouldBuild) {
+      console.log("Restarting build because I had one in the queue");
+      ref.shouldBuild = false;
       doIt();
     } else if (onwatch) {
       //Send noti that this is done
@@ -98,24 +100,18 @@ const watch = (filterFunc, allowDefault = true) => {
       filter: (f) => {
         const doRun = (() => {
           if (!existsSync(join(process.cwd(), f))) {
-            console.log("Skipping becxause does not exist, ", f);
             return false;
           }
           const lstat = lstatSync(join(process.cwd(), f));
           if (lstat.isDirectory()) {
-            console.log("Skipping because is a directory", f);
             return false;
           }
-          console.log("Checking against ignoremasks", ignoremasks);
           if (
             ignoremasks.some((mask) => {
-              console.log("matching against mask", mask);
               const match = minimatch(f, mask);
-              console.log("Match result", match);
               return match;
             })
           ) {
-            console.log("failed an ignoremask test: ", ignoremasks);
             return false;
           }
           if (allowDefault) {
@@ -141,7 +137,8 @@ const watch = (filterFunc, allowDefault = true) => {
           if (typeof filterFunc === "function") return filterFunc(f);
           return false;
         })();
-        console.log("Looking at changed file", f, doRun);
+        if (doRun)
+          console.log("Launching onwatch/build because of changed file", f);
         return doRun;
       },
       delay: 1000,
