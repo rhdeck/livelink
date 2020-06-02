@@ -1,5 +1,11 @@
 const { join, resolve } = require("path");
-const { readFileSync, writeFileSync, existsSync, lstatSync } = require("fs");
+const {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  lstatSync,
+  chmodSync,
+} = require("fs");
 const { spawnSync, spawn } = require("child_process");
 const Deferred = require("es6-deferred");
 const nodeWatch = require("node-watch");
@@ -35,6 +41,7 @@ const watch = (filterFunc, allowDefault = true) => {
   echo "${lastBuild ? new Date(lastBuild).toLocaleString() : "No builds yet"}"
   echo '${name} | bash="code ${process.cwd()}"'`
       );
+      chmodSync(bbFullpath, 0o777);
     } catch (e) {
       console.log(
         "Tried to update bitbar plugin but could not at",
