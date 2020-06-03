@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 const { join, dirname } = require("path");
 const { lstatSync } = require("fs");
-const { runLink, getLiveLinks, setLiveLinks, watch } = require("./");
+const {
+  runLink,
+  getLiveLinks,
+  setLiveLinks,
+  watch,
+  getIgnoreMasks,
+  setIgnoreMasks,
+} = require("./");
 const { spawnSync } = require("child_process");
 const commander = require("commander");
 commander
@@ -66,6 +73,28 @@ commander
     delete links[dependency];
     setLiveLinks(links);
     console.log("Removed", dependency);
+  });
+commander
+  .command("ignore <mask>")
+  .description("Add glob of file(s) to ignore")
+  .action((mask) => {
+    const ignores = getIgnoreMasks();
+    ignores.push(mask);
+    setIgnoreMasks(ignores);
+  });
+commander
+  .command("remove-ignore <mask>")
+  .description("Remove ignore glob")
+  .action((mask) => {
+    const ignores = getIgnoreMasks().filter((m) => m !== mask);
+    setIgnoreMasks(ignores);
+  });
+commander
+  .command("list-ignores")
+  .description("List ignored globs")
+  .action(() => {
+    const ignores = getIgnoreMasks();
+    console.log(JSON.stringify(ignores, null, 2));
   });
 commander
   .command("watch")
