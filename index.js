@@ -72,7 +72,9 @@ const watch = (filterFunc, allowDefault = true) => {
         `${firstInititial}: Building ${(
           (Date.now() - startTime) /
           1000
-        ).toFixed(0)}/${lastDuration}s${ref.shouldBuild ? " +1" : " "}`
+        ).toFixed(0)}${lastDuration ? "/" + lastDuration : ""}s${
+          ref.shouldBuild ? " +1" : " "
+        }`
       );
     }, 500);
     await promise;
@@ -163,6 +165,29 @@ const getLiveLinks = () => {
     return {};
   }
 };
+const getIgnoreMasks = () => {
+  try {
+    const { liveLink: { ignoreMasks } = {} } = JSON.parse(
+      readFileSync(join(process.cwd(), "package.json"), { encoding: "utf8" })
+    );
+    return ignoreMasks || [];
+  } catch (e) {
+    return [];
+  }
+};
+const setIgnoreMasks = (ignoreMasks) => {
+  const o = JSON.parse(
+    readFileSync(join(process.cwd(), "package.json"), { encoding: "utf8" })
+  );
+  writeFileSync(
+    join(process.cwd(), "package.json"),
+    JSON.stringify(
+      { ...o, liveLink: { ...(o.liveLink || {}), ignoreMasks } },
+      null,
+      2
+    )
+  );
+};
 const setLiveLinks = (liveLinks) => {
   const o = JSON.parse(
     readFileSync(join(process.cwd(), "package.json"), { encoding: "utf8" })
@@ -199,4 +224,11 @@ const runLink = (liveLinks) => {
     spawnSync("wml", ["start"], { stdio: "inherit" });
   }
 };
-module.exports = { runLink, getLiveLinks, setLiveLinks, watch };
+module.exports = {
+  runLink,
+  getLiveLinks,
+  setLiveLinks,
+  watch,
+  getIgnoreMasks,
+  setIgnoreMasks,
+};
