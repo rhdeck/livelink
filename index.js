@@ -258,7 +258,7 @@ const copyOnce = async (liveLinks) => {
       console.log("Copying from", source, "to", dest);
       await rcopy(source, dest, {
         filter: (path) => {
-          console.log("Looking at ", path);
+          // console.log("Looking at ", path);
           if (path.startsWith("node_modules")) return false;
           if (path.startsWith(".git/")) return false;
           return true;
