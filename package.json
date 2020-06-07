@@ -5,9 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "onwatch": "yarn build",
     "build": "yarn pack -f package.tgz",
-    "watch": "node watch.js"
+    "watch": "./bin.js watch"
   },
   "repository": {
     "type": "git",
@@ -28,7 +27,11 @@
     "es6-deferred": "^1.3.0",
     "minimatch": "^3.0.4",
     "node-watch": "^0.6.4",
+    "recursive-copy": "^2.0.10",
     "untildify": "^4.0.0"
   },
-  "bin": "./bin.js"
+  "bin": "./bin.js",
+  "devDependencies": {
+    "eslint": "^7.1.0"
+  }
 }

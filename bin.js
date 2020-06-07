@@ -8,6 +8,7 @@ const {
   watch,
   getIgnoreMasks,
   setIgnoreMasks,
+  copyOnce,
 } = require("./");
 const { spawnSync } = require("child_process");
 const commander = require("commander");
@@ -110,5 +111,12 @@ commander
     Object.values(liveLinks).forEach((path) =>
       spawnSync("code", [path], { stdio: "inherit" })
     );
+  });
+commander
+  .command("once")
+  .description("Copy sources to dependencies once (does not use watchman)")
+  .action(async () => {
+    const liveLinks = getLiveLinks();
+    await copyOnce(liveLinks);
   });
 commander.parse();

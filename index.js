@@ -1,10 +1,12 @@
 const { join, resolve } = require("path");
+const rcopy = require("recursive-copy");
 const {
   readFileSync,
   writeFileSync,
   existsSync,
   lstatSync,
   chmodSync,
+  mkdirSync,
 } = require("fs");
 const { spawnSync, spawn } = require("child_process");
 const Deferred = require("es6-deferred");
@@ -111,8 +113,12 @@ const watch = (filterFunc, allowDefault = true) => {
           if (!existsSync(join(process.cwd(), f))) {
             return false;
           }
-          const lstat = lstatSync(join(process.cwd(), f));
-          if (lstat.isDirectory()) {
+          try {
+            const lstat = lstatSync(join(process.cwd(), f));
+            if (lstat.isDirectory()) {
+              return false;
+            }
+          } catch (e) {
             return false;
           }
           if (
@@ -202,6 +208,7 @@ const setLiveLinks = (liveLinks) => {
   );
 };
 const runLink = (liveLinks) => {
+  if (!liveLinks) liveLinks = getLiveLinks();
   //Get links from package.json
   spawnSync("wml", ["rm", "all"], { stdio: "inherit" });
   if (liveLinks && Object.entries(liveLinks).length) {
@@ -221,7 +228,35 @@ const runLink = (liveLinks) => {
         );
       }
     });
-    spawnSync("wml", ["start"], { stdio: "inherit" });
+
+    try {
+      spawnSync("wml", ["start"], { stdio: "inherit" });
+    } catch (e) {
+      Object.entries(liveLinks).forEach(([dependencyName, source]) => {
+        if (existsSync(source)) {
+          spawnSync("watchman", ["watch", source], { stdio: "inherit" });
+        }
+      });
+      spawnSync("wml", ["start"], { stdio: "inherit" });
+    }
+  }
+};
+const copyOnce = async (liveLinks) => {
+  if (!liveLinks) liveLinks = getLiveLinks();
+  for (const [dependencyName, source] of Object.entries(liveLinks)) {
+    if (existsSync(source)) {
+      let dest = join(process.cwd(), "node_modules", dependencyName);
+      if (!existsSync(dest)) {
+        try {
+          mkdirSync(dest);
+        } catch (e) {}
+      }
+      if (!existsSync(dest)) {
+        console.warn("No such dependency path", dest);
+        return;
+      }
+      await rcopy(source, dest, { filter: ["!node_modules/", "!.git/"] });
+    }
   }
 };
 module.exports = {
@@ -231,4 +266,5 @@ module.exports = {
   watch,
   getIgnoreMasks,
   setIgnoreMasks,
+  copyOnce,
 };
