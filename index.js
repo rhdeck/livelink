@@ -255,7 +255,19 @@ const copyOnce = async (liveLinks) => {
         console.warn("No such dependency path", dest);
         return;
       }
-      await rcopy(source, dest, { filter: ["!node_modules/", "!.git/"] });
+      console.log("Copying from", source, "to", dest);
+      await rcopy(source, dest, {
+        filter: (path) => {
+          console.log("Looking at ", path);
+          if (path.startsWith("node_modules")) return false;
+          if (path.startsWith(".git/")) return false;
+          return true;
+        },
+        overwrite: true,
+        dot: true,
+        junk: true,
+      });
+      console.log("Completed copy from", source, "to", dest);
     }
   }
 };
