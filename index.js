@@ -229,16 +229,21 @@ const runLink = (liveLinks) => {
       }
     });
 
-    try {
-      spawnSync("wml", ["start"], { stdio: "inherit" });
-    } catch (e) {
-      Object.entries(liveLinks).forEach(([dependencyName, source]) => {
-        if (existsSync(source)) {
-          spawnSync("watchman", ["watch", source], { stdio: "inherit" });
-        }
-      });
-      spawnSync("wml", ["start"], { stdio: "inherit" });
-    }
+    // try {
+    console.log("Starting wml for the first time");
+    spawnSync("wml", ["start"], { stdio: "inherit" });
+    // console.warn("Done with wml - THIS SHOULD NOT HAPPEN");
+    // } catch (e) {
+    console.warn("Hit error trying to start wml ");
+    Object.entries(liveLinks).forEach(([dependencyName, source]) => {
+      if (existsSync(source)) {
+        console.log("Adding watch for ", source);
+        spawnSync("watchman", ["watch", source], { stdio: "inherit" });
+      }
+    });
+    console.warn("Restarting wml");
+    spawnSync("wml", ["start"], { stdio: "inherit" });
+    // }
   }
 };
 const copyOnce = async (liveLinks) => {
