@@ -20,7 +20,7 @@ const watch = (filterFunc, allowDefault = true) => {
       liveLinks,
       bbPath = "~/Documents/bbplugins",
       watchPath = "./",
-      ignoremasks = [],
+      ignoreMasks = [],
     } = {},
     name,
     scripts: { onwatch, build } = {},
@@ -122,7 +122,7 @@ const watch = (filterFunc, allowDefault = true) => {
             return false;
           }
           if (
-            ignoremasks.some((mask) => {
+            ignoreMasks.some((mask) => {
               const match = minimatch(f, mask);
               return match;
             })
