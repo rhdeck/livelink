@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 const { join, dirname } = require("path");
-const { lstatSync } = require("fs");
+const { lstatSync, existsSync, readFileSync } = require("fs");
 const {
   runLink,
   getLiveLinks,
@@ -13,12 +13,23 @@ const {
 const { spawnSync } = require("child_process");
 const commander = require("commander");
 commander
-  .command("add <dependency> <source>")
-  .description("Link <source> to update node_modules path for <dependency>")
-  .action((dependency, source) => {
-    const liveLinks = getLiveLinks();
-    setLiveLinks({ ...liveLinks, [dependency]: source });
-    console.log("Added link from ", source, "to", dependency);
+  .command("add <source>")
+  .description(
+    "Link <source> to update node_modules path for the package name defined in package.json"
+  )
+  .action((source) => {
+    //find source
+    const packagePath = join(source, "package.json");
+    if (existsSync(packagePath)) {
+      const { name: dependency } = JSON.parse(
+        readFileSync(packagePath, { encoding: "utf8" })
+      );
+      const liveLinks = getLiveLinks();
+      setLiveLinks({ ...liveLinks, [dependency]: source });
+      console.log("Added link from ", source, "to", dependency);
+    } else {
+      console.error("Could not find a valid package at path", source);
+    }
   });
 commander
   .command("clear")
