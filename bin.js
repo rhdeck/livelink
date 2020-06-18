@@ -124,10 +124,13 @@ commander
     );
   });
 commander
-  .command("once")
-  .description("Copy sources to dependencies once (does not use watchman)")
-  .action(async () => {
+  .command("once [dependency]")
+  .description(
+    "Copy source to dependency path once (leave dependency blank to copy all)"
+  )
+  .action(async ([dependency]) => {
     const liveLinks = getLiveLinks();
-    await copyOnce(liveLinks);
+    if (dependency) await copyOnce({ [dependency]: liveLinks[dependency] });
+    else await copyOnce(liveLinks);
   });
 commander.parse();
