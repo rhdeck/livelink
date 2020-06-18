@@ -128,7 +128,7 @@ commander
   .description(
     "Copy source to dependency path once (leave dependency blank to copy all)"
   )
-  .action(async ([dependency]) => {
+  .action(async (dependency) => {
     const liveLinks = getLiveLinks();
     if (dependency) await copyOnce({ [dependency]: liveLinks[dependency] });
     else await copyOnce(liveLinks);
