@@ -1,4 +1,4 @@
-const { join, resolve } = require("path");
+const { join, relative, resolve } = require("path");
 const rcopy = require("recursive-copy");
 const {
   readFileSync,
@@ -7,12 +7,16 @@ const {
   lstatSync,
   chmodSync,
   mkdirSync,
+  copyFile,
 } = require("fs");
 const { spawnSync, spawn } = require("child_process");
 const Deferred = require("es6-deferred");
 const nodeWatch = require("node-watch");
 const untildify = require("untildify");
 const minimatch = require("minimatch");
+const { SIGINT } = require("constants");
+const { Console } = require("console");
+const nativeGlobs = ["/ios/**", "/android/**"];
 const watch = (filterFunc, allowDefault = true) => {
   //Look for noti and bbplugin directory
   const {
@@ -194,6 +198,29 @@ const setIgnoreMasks = (ignoreMasks) => {
     )
   );
 };
+const getReverseMasks = () => {
+  try {
+    const { liveLink: { reverseMasks } = {} } = JSON.parse(
+      readFileSync(join(process.cwd(), "package.json"), { encoding: "utf8" })
+    );
+    return reverseMasks || [];
+  } catch (e) {
+    return [];
+  }
+};
+const setReverseMasks = (reverseMasks) => {
+  const o = JSON.parse(
+    readFileSync(join(process.cwd(), "package.json"), { encoding: "utf8" })
+  );
+  writeFileSync(
+    join(process.cwd(), "package.json"),
+    JSON.stringify(
+      { ...o, liveLink: { ...(o.liveLink || {}), reverseMasks } },
+      null,
+      2
+    )
+  );
+};
 const setLiveLinks = (liveLinks) => {
   const o = JSON.parse(
     readFileSync(join(process.cwd(), "package.json"), { encoding: "utf8" })
@@ -207,20 +234,131 @@ const setLiveLinks = (liveLinks) => {
     )
   );
 };
-const runLink = (liveLinks) => {
+const runLink = async (liveLinks, reverseNative = true, initialCopy = true) => {
   if (!liveLinks) liveLinks = getLiveLinks();
+  if (initialCopy) await copyOnce(liveLinks, false);
+  const copyLog = [];
   //Get links from package.json
-  spawnSync("wml", ["rm", "all"], { stdio: "inherit" });
+  const reverseMasks = [...nativeGlobs, ...getReverseMasks()];
+  const watchers = [];
   if (liveLinks && Object.entries(liveLinks).length) {
     Object.entries(liveLinks).forEach(([dependencyName, source]) => {
+      const dependencyPath = join(
+        process.cwd(),
+        "node_modules",
+        dependencyName
+      );
       if (existsSync(source)) {
-        spawnSync(
-          "wml",
-          ["add", source, join("node_modules", dependencyName)],
-          {
-            stdio: "inherit",
-          }
+        console.log("Adding listener for ", source, "to", dependencyPath);
+        watchers.push(
+          nodeWatch(
+            source,
+            {
+              recursive: true,
+              delay: 1000,
+              filter: (path) => {
+                console.log(
+                  "evaluating for nativewatch",
+                  path,
+                  resolve(path),
+                  copyLog[resolve(path)]
+                );
+                const rpath = relative(source, path);
+                if ([".git", "node_modules"].some((t) => rpath.includes(t))) {
+                  return false;
+                }
+                if (
+                  reverseNative &&
+                  reverseMasks.some((mask) => {
+                    const match = minimatch("/" + rpath, mask);
+                    return match;
+                  }) &&
+                  copyLog[resolve(path)] &&
+                  Date.now() - copyLog[resolve(path)] < 2000
+                ) {
+                  console.log(
+                    "This is native and I just reveiced a copy",
+                    path
+                  );
+                  return false;
+                }
+                return true;
+              },
+            },
+            (event, path) => {
+              const rpath = relative(source, path);
+              const target = join(dependencyPath, rpath);
+              copyLog[resolve(target)] = Date.now();
+              console.log("Adding to copyLog", resolve(target));
+              copyFile(path, target, () => {
+                console.log(
+                  new Date().toISOString(),
+                  "Copied",
+                  path,
+                  "to",
+                  target
+                );
+              });
+            }
+          )
         );
+        if (reverseNative) {
+          console.log("Pushing native watcher for ", dependencyPath);
+          watchers.push(
+            nodeWatch(
+              dependencyPath,
+              {
+                recursive: true,
+                delay: 1000,
+                filter: (path) => {
+                  console.log(
+                    "evaluating for nativewatch",
+                    path,
+                    resolve(path),
+                    copyLog[resolve(path)]
+                  );
+                  const rpath = relative(dependencyPath, path);
+                  if ([".git", "node_modules"].some((t) => rpath.includes(t)))
+                    return false;
+                  if (
+                    !reverseMasks.some((mask) => {
+                      const match = minimatch("/" + rpath, mask);
+                      return match;
+                    })
+                  )
+                    return false;
+                  if (
+                    copyLog[resolve(path)] &&
+                    Date.now() - copyLog[resolve(path)] < 2000
+                  ) {
+                    console.log(
+                      "I just received this, preventing bounce",
+                      path
+                    );
+                    return false;
+                  }
+                  return true;
+                },
+              },
+              (eventType, path) => {
+                //send it home
+                const rpath = relative(dependencyPath, path);
+                const sourcePath = join(source, rpath);
+                copyFile(path, sourcePath, () => {
+                  copyLog[resolve(sourcePath)] = Date.now();
+                  console.log("Adding to copyLog", resolve(sourcePath));
+                  console.log(
+                    new Date().toISOString(),
+                    "Native (reverse): Copied",
+                    path,
+                    "to",
+                    sourcePath
+                  );
+                });
+              }
+            )
+          );
+        }
       } else {
         console.warn(
           "source for link does not exist, continuing with others: ",
@@ -228,28 +366,15 @@ const runLink = (liveLinks) => {
         );
       }
     });
-
-    // try {
-    console.log("Starting wml for the first time");
-    spawnSync("wml", ["start"], { stdio: "inherit" });
-    // console.warn("Done with wml - THIS SHOULD NOT HAPPEN");
-    // } catch (e) {
-    console.warn("Hit error trying to start wml ");
-    Object.entries(liveLinks).forEach(([dependencyName, source]) => {
-      if (existsSync(source)) {
-        console.log("Adding watch for ", source);
-        spawnSync("watchman", ["watch", source], { stdio: "inherit" });
-      }
-    });
-    console.warn("Restarting wml");
-    spawnSync("wml", ["start"], { stdio: "inherit" });
-    // }
+    console.log("Watching for changes in ", Object.values(liveLinks).join(","));
+    process.on(SIGINT, () => watchers.map((w) => w.close()));
   }
 };
-const copyOnce = async (liveLinks) => {
+const copyOnce = async (liveLinks, reverseNative = false) => {
   if (!liveLinks) liveLinks = getLiveLinks();
   for (const [dependencyName, source] of Object.entries(liveLinks)) {
     if (existsSync(source)) {
+      ``;
       let dest = join(process.cwd(), "node_modules", dependencyName);
       if (!existsSync(dest)) {
         try {
@@ -266,13 +391,33 @@ const copyOnce = async (liveLinks) => {
           // console.log("Looking at ", path);
           if (path.startsWith("node_modules")) return false;
           if (path.startsWith(".git/")) return false;
+          if (reverseNative && nativePaths.some(path.includes)) return false;
           return true;
         },
         overwrite: true,
         dot: true,
         junk: true,
       });
-      console.log("Completed copy from", source, "to", dest);
+      if (reverseNative) {
+        await Promise.all(
+          nativePaths.map(async (nativePath) => {
+            const fullNativePath = join(source, nativePath);
+            if (existsSync(fullNativePath)) {
+              //Move that back home
+              await rcopy(fullNativePath, source);
+            }
+          })
+        );
+      }
+      if (reverseNative)
+        console.log(
+          "Completed copy from",
+          source,
+          "to",
+          dest,
+          "except for native code, which went the other way"
+        );
+      else console.log("Completed copy from", source, "to", dest);
     }
   }
 };
@@ -284,4 +429,6 @@ module.exports = {
   getIgnoreMasks,
   setIgnoreMasks,
   copyOnce,
+  getReverseMasks,
+  setReverseMasks,
 };

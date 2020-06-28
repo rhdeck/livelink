@@ -9,6 +9,8 @@ const {
   getIgnoreMasks,
   setIgnoreMasks,
   copyOnce,
+  getReverseMasks,
+  setReverseMasks,
 } = require("./");
 const { spawnSync } = require("child_process");
 const commander = require("commander");
@@ -109,6 +111,30 @@ commander
     console.log(JSON.stringify(ignores, null, 2));
   });
 commander
+  .command("reverse <mask>")
+  .description(
+    "Add glob of file(s) to reverse-link (e.g. send from node_modules to the source"
+  )
+  .action((mask) => {
+    const ignores = getReverseMasks();
+    ignores.push(mask);
+    setReverseMasks(ignores);
+  });
+commander
+  .command("remove-reverse <mask>")
+  .description("Remove reverse glob")
+  .action((mask) => {
+    const ignores = getReverseMasks().filter((m) => m !== mask);
+    setReverseMasks(ignores);
+  });
+commander
+  .command("list-reverses")
+  .description("List reversed globs")
+  .action(() => {
+    const ignores = getReverseMasks();
+    console.log(JSON.stringify(ignores, null, 2));
+  });
+commander
   .command("watch")
   .description(
     "Watch current dir and run onwatch yarn script when I see local files or livelinks change"
@@ -128,9 +154,13 @@ commander
   .description(
     "Copy source to dependency path once (leave dependency blank to copy all)"
   )
+  .option(
+    "-r, --reverse-native",
+    "Reverse native linking (e.g. send from dependency to source)"
+  )
   .action(async (dependency) => {
     const liveLinks = getLiveLinks();
     if (dependency) await copyOnce({ [dependency]: liveLinks[dependency] });
-    else await copyOnce(liveLinks);
+    else await copyOnce(liveLinks, commander.reverseNative);
   });
 commander.parse();
