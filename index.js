@@ -15,7 +15,6 @@ const nodeWatch = require("node-watch");
 const untildify = require("untildify");
 const minimatch = require("minimatch");
 const { SIGINT } = require("constants");
-const { Console } = require("console");
 const nativeGlobs = ["/ios/**", "/android/**"];
 const watch = (filterFunc, allowDefault = true) => {
   //Look for noti and bbplugin directory
